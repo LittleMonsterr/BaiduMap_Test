@@ -1,6 +1,9 @@
 package baidumap_test.weiyu.test.com.baidumap_test;
 
 import android.content.Context;
+import android.graphics.Color;
+import android.graphics.Point;
+import android.net.Uri;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.Menu;
@@ -19,6 +22,8 @@ import com.baidu.mapapi.SDKInitializer;
 import com.baidu.mapapi.map.BaiduMap;
 import com.baidu.mapapi.map.BitmapDescriptor;
 import com.baidu.mapapi.map.BitmapDescriptorFactory;
+
+import com.baidu.mapapi.map.InfoWindow;
 import com.baidu.mapapi.map.MapPoi;
 import com.baidu.mapapi.map.MapStatusUpdate;
 import com.baidu.mapapi.map.MapStatusUpdateFactory;
@@ -30,6 +35,9 @@ import com.baidu.mapapi.map.MyLocationData;
 import com.baidu.mapapi.map.OverlayOptions;
 import com.baidu.mapapi.model.LatLng;
 import com.baidu.mapapi.search.route.IndoorPlanNode;
+import com.google.android.gms.appindexing.Action;
+import com.google.android.gms.appindexing.AppIndex;
+import com.google.android.gms.common.api.GoogleApiClient;
 
 import java.util.List;
 
@@ -53,6 +61,11 @@ public class MainActivity extends AppCompatActivity {
     //覆盖物相关
     private BitmapDescriptor mMarker;
     private RelativeLayout mMarkerLy;
+    /**
+     * ATTENTION: This was auto-generated to implement the App Indexing API.
+     * See https://g.co/AppIndexing/AndroidStudio for more information.
+     */
+    private GoogleApiClient client;
 
 
     @Override
@@ -86,7 +99,28 @@ public class MainActivity extends AppCompatActivity {
                 iv.setImageResource(info.getIngId());
                 distance.setText(info.getDistance());
                 name.setText(info.getName());
-                zan.setText(info.getZan()+"");
+                zan.setText(info.getZan() + "");
+
+                InfoWindow infoWindow;
+                TextView tv = new TextView(context);
+                tv.setBackgroundResource(R.drawable.description);
+                tv.setPadding(30, 20, 30, 50);
+                tv.setText(info.getName());
+                tv.setTextColor(Color.WHITE);
+
+                final LatLng latLng = marker.getPosition();
+                Point p = mBaiduMap.getProjection().toScreenLocation(latLng);
+                p.y -= 47;
+                LatLng ll = mBaiduMap.getProjection().fromScreenLocation(p);
+
+               /* infoWindow = new InfoWindow(tv, ll,
+                        new OnInfoWindowClickListener() {
+                            @Override
+                            public void onInfoWindowClick() {
+                                mBaiduMap.hideInfoWindow();
+                            }
+                        });
+                mBaiduMap.showInfoWindow(infoWindow);*/
 
                 mMarkerLy.setVisibility(View.VISIBLE);
 
@@ -94,18 +128,22 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-      mBaiduMap.setOnMapClickListener(new BaiduMap.OnMapClickListener() {
-          @Override
-          public void onMapClick(LatLng latLng) {
+        mBaiduMap.setOnMapClickListener(new BaiduMap.OnMapClickListener() {
+            @Override
+            public void onMapClick(LatLng latLng) {
 
-              mMarkerLy.setVisibility(View.GONE);
-          }
+                mMarkerLy.setVisibility(View.GONE);
+                mBaiduMap.hideInfoWindow();
+            }
 
-          @Override
-          public boolean onMapPoiClick(MapPoi mapPoi) {
-              return false;
-          }
-      });
+            @Override
+            public boolean onMapPoiClick(MapPoi mapPoi) {
+                return false;
+            }
+        });
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
     }
 
     private void initMarkers() {
@@ -154,7 +192,7 @@ public class MainActivity extends AppCompatActivity {
         super.onStart();
         //开启定位
         mBaiduMap.setMyLocationEnabled(true);
-        if(!mLocationClient.isStarted()){
+        if (!mLocationClient.isStarted()) {
             mLocationClient.start();
         }
         //开启方向传感器
@@ -180,7 +218,7 @@ public class MainActivity extends AppCompatActivity {
         super.onStop();
         //关闭定位
         mBaiduMap.setMyLocationEnabled(false);
-        if(mLocationClient.isStarted()){
+        if (mLocationClient.isStarted()) {
             mLocationClient.stop();
         }
         //关闭方向传感器
@@ -197,25 +235,25 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         //Inflate the menu;this adds items to the action bar if it is pressed
-        getMenuInflater().inflate(R.menu.main,menu);
+        getMenuInflater().inflate(R.menu.main, menu);
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         //return super.onOptionsItemSelected(item);
-        switch (item.getItemId()){
+        switch (item.getItemId()) {
             case R.id.baidumap_commom:
-               mBaiduMap.setMapType(BaiduMap.MAP_TYPE_NORMAL);
+                mBaiduMap.setMapType(BaiduMap.MAP_TYPE_NORMAL);
                 break;
             case R.id.baidumap_satallite:
                 mBaiduMap.setMapType(BaiduMap.MAP_TYPE_SATELLITE);
                 break;
             case R.id.baidumap_traffic:
-                if(mBaiduMap.isTrafficEnabled()){
+                if (mBaiduMap.isTrafficEnabled()) {
                     mBaiduMap.setTrafficEnabled(false);
                     item.setTitle("实时交通(off)");
-                }else{
+                } else {
                     mBaiduMap.setTrafficEnabled(true);
                     item.setTitle("实时交通(on)");
                 }
@@ -243,6 +281,7 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * 添加覆盖物
+     *
      * @param infos
      */
     private void addOverlays(List<Info> infos) {
@@ -251,14 +290,14 @@ public class MainActivity extends AppCompatActivity {
         Marker marker = null;
         OverlayOptions options;
 
-        for(Info info:infos){
+        for (Info info : infos) {
             //经纬度
-            latLng = new LatLng(info.getLatitude(),info.getLongtitude());
+            latLng = new LatLng(info.getLatitude(), info.getLongtitude());
             //图标
             options = new MarkerOptions().position(latLng).icon(mMarker).zIndex(5);
             marker = (Marker) mBaiduMap.addOverlay(options);
             Bundle bundle = new Bundle();
-            bundle.putSerializable("info",info);
+            bundle.putSerializable("info", info);
             marker.setExtraInfo(bundle);
         }
 
@@ -268,6 +307,7 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * 定位到我的位置
+     *
      * @param mLatitude
      * @param mLongtitude
      */
@@ -277,7 +317,7 @@ public class MainActivity extends AppCompatActivity {
         mBaiduMap.animateMapStatus(msu);
     }
 
-    private class MyLocationListener implements BDLocationListener{
+    private class MyLocationListener implements BDLocationListener {
         @Override
         public void onReceiveLocation(BDLocation bdLocation) {
             MyLocationData data = new MyLocationData.Builder()
@@ -291,15 +331,15 @@ public class MainActivity extends AppCompatActivity {
 
             //设置自定义图标
             MyLocationConfiguration config = new
-                    MyLocationConfiguration(mLocationMode,true,mIconLocation);
+                    MyLocationConfiguration(mLocationMode, true, mIconLocation);
             mBaiduMap.setMyLocationConfigeration(config);
 
             //更新经纬度
             mLatitude = bdLocation.getLatitude();
             mLongtitude = bdLocation.getLongitude();
 
-            if(isFirstIn){
-                LatLng latLng = new LatLng(bdLocation.getLatitude(),bdLocation.getLongitude());
+            if (isFirstIn) {
+                LatLng latLng = new LatLng(bdLocation.getLatitude(), bdLocation.getLongitude());
                 MapStatusUpdate msu = MapStatusUpdateFactory.newLatLng(latLng);
                 mBaiduMap.animateMapStatus(msu);
                 isFirstIn = false;
